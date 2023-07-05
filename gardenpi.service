@@ -1,0 +1,23 @@
+[Unit]
+Description=Garden PI Service
+Requires=systemd-modules-load.service
+After=systemd-modules.load.service
+After=network-online.target
+After=time-sync.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+StartLimitAction=reboot
+
+[Service]
+WorkingDirectory=/home/david
+Type=notify
+Restart=always
+RestartSec=30
+User=david
+ExecStart=/home/david/gardenpi.py
+WatchdogSec=180
+
+[Install]
+WantedBy=multi-user.target
+
+

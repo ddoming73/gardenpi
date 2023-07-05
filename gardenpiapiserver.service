@@ -1,0 +1,14 @@
+[Unit]
+Description=Garden PI API Server
+After=network-online.target
+After=gardenpi.service
+
+[Service]
+WorkingDirectory=/home/david
+Type=simple
+Restart=always
+User=david
+ExecStart=/home/david/.local/bin/gunicorn --bind="0.0.0.0:5000" gardenPiServer:app
+
+[Install]
+WantedBy=multi-user.target
