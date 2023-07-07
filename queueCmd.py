@@ -1,3 +1,7 @@
+"""
+queueCmd - definitions for thread communications
+and system state
+"""
 
 CMD_CHANNEL_CFG = 0
 CMD_WAKE_UP = 1
@@ -11,9 +15,23 @@ globalExit = False
 
 
 
-class queueCommand():
+class QueueCommand():
+    # pylint: disable="invalid-name"
+    """ 
+       This is the command structure passed on to all
+       system threads for configuration and status
+       reporting. The type of action requested is defined
+       by the type parameter
+    """
     def __init__(self,cmdType):
         self.type = cmdType
+        self.channel = 0
+        self.enabled = 0
+        self.periodSeconds = 0
+        self.durationSeconds = 0
+        self.startTimeOfDay = 0
+        self.state = CHANNEL_OFF
+        self.nextTransition = 0
     def setConfig(self,channel,enabled,period,duration,startTime):
         self.channel = channel
         self.enabled = enabled
@@ -39,3 +57,4 @@ class queueCommand():
         return self.state
     def getNextTransition(self):
         return self.nextTransition
+    

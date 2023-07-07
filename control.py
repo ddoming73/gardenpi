@@ -1,18 +1,21 @@
+"""
+control - Module that handles control of the ssytem using
+the SSD1306 OLED display and the front panel GPIOs
+"""
 import time
 import math
 import logging
 import threading
 import subprocess
 import queue
-import gpios
-import queueCmd
-
-import Adafruit_GPIO.SPI as SPI
-import Adafruit_SSD1306
-
 from PIL import Image
 from PIL import ImageDraw
 from PIL import ImageFont
+import Adafruit_SSD1306
+import gpios
+import queueCmd
+
+
 
 STATE_CLEAR_SCREEN = 0
 STATE_SHOW_STATUS = 1
@@ -20,11 +23,21 @@ STATE_CHANNEL_SEL = 2
 STATE_CHANNEL_STATUS = 3
 
 def durationString(duration):
+    # pylint: disable="invalid-name"
+    """
+    Convert a duration in seconds to a string
+    for display in HH:MM:SS format
+    """
     hours, remainder = divmod(duration, 3600)
     minutes, seconds = divmod(remainder, 60)
     return '{:02}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
 
 def startTimeString(timestamp):
+    # pylint: disable="invalid-name"
+    """
+    Convert a Unix timestamp date into a time of day string
+    for display in HH:MM:SS format. 
+    """
     currentTime = time.time()
     gmt = time.localtime(currentTime)
     startOfDay = math.trunc(currentTime - ((gmt.tm_hour * 3600 )+(gmt.tm_min*60)+gmt.tm_sec))
@@ -32,9 +45,14 @@ def startTimeString(timestamp):
         duration = timestamp - startOfDay
     else:
         duration = 0
-    return durationString(duration)    
+    return durationString(duration)
 
 class DisplayHandler(threading.Thread):
+    # pylint: disable="invalid-name"
+    """
+    Thread that monitors the GPIOs connected to the front panel buttons
+    and controls the SSD1306 OLED display.
+    """
     def __init__(self, *args, **kwargs):
         self.q = queue.Queue(maxsize=20)
         # 128x64 display with hardware I2C:
@@ -42,28 +60,40 @@ class DisplayHandler(threading.Thread):
         # disp = Adafruit_SSD1306.SSD1306_128_64(rst=RST, i2c_address=0x3C)
         self.disp = Adafruit_SSD1306.SSD1306_128_64(rst=None)
         # Load default font.
-        # Alternatively load a TTF font.  Make sure the .ttf font file is in the same directory as the python script!
+        # Alternatively load a TTF font.
+        # Make sure the .ttf font file is in the same directory as the python script!
         # Some other nice fonts to try: http://www.dafont.com/bitmap.php
         # font = ImageFont.truetype('Minecraftia.ttf', 8)
         # Draw a black filled box to clear the image.
         self.font = ImageFont.load_default()
         self.startLine = 0
         self.currentLine = 0
+        self.state = STATE_CLEAR_SCREEN
+        self.endscreen = 0
+        self.selChannel = 0
 
         self.chConfigs = []
         for ch in range(1,9):
-            config = queueCmd.queueCommand(queueCmd.CMD_CHANNEL_CFG)
+            config = queueCmd.QueueCommand(queueCmd.CMD_CHANNEL_CFG)
             config.setConfig(ch,0,0,0,0)
             config.addStatus(queueCmd.CHANNEL_OFF,0)
             self.chConfigs.insert(ch-1,config)
         super().__init__(*args, **kwargs)
     def getQueue(self):
-        return self.q   
+        """
+        Return thread queue
+        """
+        return self.q
     def clearScreen(self):
-        # Clear display.
+        """
+        Function to clear the OLED display.
+        """
         self.disp.clear()
         self.disp.display()
     def statusScreen(self):
+        """
+        Function to render the system status screen.
+        """
         # Create blank image for drawing.
         # Make sure to create image with mode '1' for 1-bit color.
         width = self.disp.width
@@ -80,7 +110,9 @@ class DisplayHandler(threading.Thread):
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
 
-        # Shell scripts for system monitoring from here : https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
+        # Shell scripts for system monitoring from here :
+        # https://unix.stackexchange.com/questions/119126/command-to-display-memory-usage-disk-usage-and-cpu-load
+        #
         #cmd = "top -bn1 | grep load | awk '{printf \"CPU Load: %.2f\", $(NF-2)}'"
         #cmd = "free -m | awk 'NR==2{printf \"Mem: %s/%sMB %.2f%%\", $3,$2,$3*100/$2 }'"
         #cmd = "df -h | awk '$NF==\"/\"{printf \"Disk: %d/%dGB %s\", $3,$2,$5}'"
@@ -103,6 +135,9 @@ class DisplayHandler(threading.Thread):
         self.disp.display()
 
     def channelSelScreen(self):
+        """
+        Function to render the channel selection screen.
+        """
         # Create blank image for drawing.
         # Make sure to create image with mode '1' for 1-bit color.
         width = self.disp.width
@@ -141,6 +176,9 @@ class DisplayHandler(threading.Thread):
         self.disp.display()
 
     def channelStatusScreen(self):
+        """
+        Function to render the channel status screen.
+        """
         config = self.chConfigs[self.selChannel-1]
         # Create blank image for drawing.
         # Make sure to create image with mode '1' for 1-bit color.
@@ -177,7 +215,7 @@ class DisplayHandler(threading.Thread):
             elif prop == 4:
                 line = "Start at: {0}".format(durationString(config.getStartTime()) if enabled else "---")
             elif prop == 5:
-                line = "Back"  
+                line = "Back"
             else:
                 line = ""
             if prop == self.currentLine:
@@ -192,7 +230,18 @@ class DisplayHandler(threading.Thread):
         self.disp.display()
 
     def nextState(self,channel):
-        if (channel == gpios.UP_GPIO):
+        """
+        Function that is called when a front panel button
+        is pressed.
+        It handles the state machine that decides which 
+        screen must be shown and for how long.
+        
+        WARNING: This function does not run in the
+                 context of this class, it is called
+                 by the thread created by the gpio
+                 library to handle callbacks
+        """
+        if channel == gpios.UP_GPIO:
             if self.state == STATE_CLEAR_SCREEN:
                 self.state = STATE_SHOW_STATUS
                 self.endscreen = time.time() + 30
@@ -210,7 +259,7 @@ class DisplayHandler(threading.Thread):
                     if self.currentLine < self.startLine:
                         self.startLine = self.currentLine
                 self.endscreen = time.time() + 120
-        elif (channel == gpios.DOWN_GPIO):
+        elif channel == gpios.DOWN_GPIO:
             if self.state == STATE_CLEAR_SCREEN:
                 self.state = STATE_SHOW_STATUS
                 self.endscreen = time.time() + 30
@@ -228,7 +277,7 @@ class DisplayHandler(threading.Thread):
                     if (self.startLine + 4) < self.currentLine:
                         self.startLine = self.currentLine-4
                 self.endscreen = time.time() + 120
-        elif (channel == gpios.SEL_GPIO):
+        elif channel == gpios.SEL_GPIO:
             if self.state == STATE_CLEAR_SCREEN:
                 self.state = STATE_SHOW_STATUS
                 self.endscreen = time.time() + 30
@@ -252,19 +301,27 @@ class DisplayHandler(threading.Thread):
                 self.endscreen = time.time() + 120
         else:
             logging.error("Wrong button")
-        self.q.put(queueCmd.queueCommand(queueCmd.CMD_WAKE_UP))
+        self.q.put(queueCmd.QueueCommand(queueCmd.CMD_WAKE_UP))
 
     def screenStateMachine(self):
+        """
+        Function that handles the actual rendering of screens
+        It is called every second when the thread's queue timeouts,
+        therefore each screen is refreshed at least every second.
+        It is also called in response to a wake up command, so the
+        screen responds inmediately to button presses and configuration/status
+        changes.
+        """
         currentTime = time.time()
         if((self.endscreen != 0) and (self.endscreen <= currentTime) ):
             self.clearScreen()
             self.endscreen = 0
             self.state = STATE_CLEAR_SCREEN
-        elif (self.state == STATE_SHOW_STATUS):
+        elif self.state == STATE_SHOW_STATUS:
             self.statusScreen()
-        elif (self.state == STATE_CHANNEL_SEL):
+        elif self.state == STATE_CHANNEL_SEL:
             self.channelSelScreen()
-        elif (self.state == STATE_CHANNEL_STATUS):
+        elif self.state == STATE_CHANNEL_STATUS:
             self.channelStatusScreen()
 
     def run(self):
@@ -283,25 +340,22 @@ class DisplayHandler(threading.Thread):
                 try:
                     cmd = self.q.get(block=True,timeout=1)
                     self.q.task_done()
-                    if(cmd.getType() == queueCmd.CMD_CHANNEL_CFG):
+                    if cmd.getType() == queueCmd.CMD_CHANNEL_CFG:
                         index = cmd.getChannel()-1
                         self.chConfigs.pop(index)
                         self.chConfigs.insert(index,cmd)
-                    elif(cmd.getType() == queueCmd.CMD_WAKE_UP):
-                        self.screenStateMachine()      
-                    elif(cmd.getType() == queueCmd.CMD_QUIT):
+                    elif cmd.getType() == queueCmd.CMD_WAKE_UP:
+                        self.screenStateMachine()
+                    elif cmd.getType() == queueCmd.CMD_QUIT:
                         self.disp.clear()
                         self.disp.display()
                         logging.warning("Display thread exiting")
                         return
                 except queue.Empty:
-                    self.screenStateMachine()  
-        except:
+                    self.screenStateMachine()
+        except Exception:  # pylint: disable="broad-exception-caught"
             logging.exception("Exception on display thread")
             self.disp.clear()
             self.disp.display()
             queueCmd.globalExit = True
             return
-
-
-
