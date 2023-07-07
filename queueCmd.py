@@ -1,4 +1,3 @@
-import time
 
 CMD_CHANNEL_CFG = 0
 CMD_WAKE_UP = 1
