@@ -30,7 +30,7 @@ def durationString(duration):
     """
     hours, remainder = divmod(duration, 3600)
     minutes, seconds = divmod(remainder, 60)
-    return '{:02}:{:02}:{:02}'.format(int(hours), int(minutes), int(seconds))
+    return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 def startTimeString(timestamp):
     # pylint: disable="invalid-name"
@@ -106,7 +106,7 @@ class DisplayHandler(threading.Thread):
         # First define some constants to allow easy resizing of shapes.
         padding = -2
         top = padding
-        bottom = height-padding
+        #bottom = height-padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
 
@@ -150,7 +150,7 @@ class DisplayHandler(threading.Thread):
         # First define some constants to allow easy resizing of shapes.
         padding = -2
         top = padding
-        bottom = height-padding
+        #bottom = height-padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
         draw.text((x, top),       str("Select Channel:"), font=self.font, fill=255)
@@ -160,10 +160,10 @@ class DisplayHandler(threading.Thread):
             config = self.chConfigs[ch-1]
             if config.getEnabled():
                 state = "OFF til" if config.getState() == queueCmd.CHANNEL_WAITING else "ON til"
-                state+= " {0}".format(startTimeString(config.getNextTransition()))
+                state+= f" {startTimeString(config.getNextTransition())}"
             else:
                 state = "DISABLED"
-            line = "CH{0} {1}".format(ch,state)
+            line = f"CH{ch} {state}"
             if ch == self.currentLine:
                 draw.rectangle((x,y,width,y+10), outline=0, fill=255)
                 draw.text((x+1, y), line, font=self.font, fill=0)
@@ -192,28 +192,28 @@ class DisplayHandler(threading.Thread):
         # First define some constants to allow easy resizing of shapes.
         padding = -2
         top = padding
-        bottom = height-padding
+        #bottom = height-padding
         # Move left to right keeping track of the current x position for drawing shapes.
         x = 0
         if config.getEnabled():
             state = "OFF til" if config.getState() == queueCmd.CHANNEL_WAITING else "ON til"
-            state+= " {0}".format(startTimeString(config.getNextTransition()))
+            state+= f" {startTimeString(config.getNextTransition())}"
         else:
             state = ""
-        line = "CH{0}: {1}".format(self.selChannel,state)
+        line = f"CH{self.selChannel}: {state}"
         draw.text((x, top), line, font=self.font, fill=255)
         draw.line([(x,top+10),(width,top+10)], fill=255)
         y = top+12
         enabled = config.getEnabled()!=0
         for prop in range(1,6):
             if prop == 1:
-                line = "Enabled:  {0}".format("YES" if enabled else "NO")
+                line = f"Enabled:  {'YES' if enabled else 'NO'}"
             elif prop == 2:
-                line = "Interval: {0}".format(durationString(config.getPeriod()) if enabled else "---")
+                line = f"Interval: {durationString(config.getPeriod()) if enabled else '---'}"
             elif prop == 3:
-                line = "Duration: {0}".format(durationString(config.getDuration()) if enabled else "---")
+                line = f"Duration: {durationString(config.getDuration()) if enabled else '---'}"
             elif prop == 4:
-                line = "Start at: {0}".format(durationString(config.getStartTime()) if enabled else "---")
+                line = f"Start at: {durationString(config.getStartTime()) if enabled else '---'}"
             elif prop == 5:
                 line = "Back"
             else:

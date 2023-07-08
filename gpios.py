@@ -1,15 +1,19 @@
+"""
+gpios - module for initialization and control of the GPIOs used
+by the system. 
+"""
 import time
 import threading
 import RPi.GPIO as gpio
 
 CH1_GPIO = 5
 CH2_GPIO = 6
-CH3_GPIO = 13    
-CH4_GPIO = 16    
-CH5_GPIO = 19   
-CH6_GPIO = 20   
-CH7_GPIO = 21  
-CH8_GPIO = 26  
+CH3_GPIO = 13
+CH4_GPIO = 16
+CH5_GPIO = 19
+CH6_GPIO = 20
+CH7_GPIO = 21
+CH8_GPIO = 26
 
 UP_GPIO = 14
 DOWN_GPIO = 18
@@ -31,7 +35,7 @@ def gpio_end():
     gpio.cleanup(ctrlGpios)
 
 def channelSetOn(channel):
-    # Use the mutex to keep channels from turning on 
+    # Use the mutex to keep channels from turning on
     # simultaneously, to keep inrush current down
     with channelOnMutex:
         gpio.output(relayGpios[channel - 1],gpio.LOW)

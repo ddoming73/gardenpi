@@ -198,7 +198,7 @@ class DbHandler(threading.Thread):
 if __name__ == "__main__":
     logging.basicConfig(format="%(message)s", level=logging.INFO,
                         datefmt="%H:%M:%S")
-
+    exitStatus = 0
     logging.info("Reading configuration")
     try:
         db_init()
@@ -210,7 +210,7 @@ if __name__ == "__main__":
         else:
             wd.status("Starting...")
 
-        exitStatus = 0
+
 
         logging.info("Launching threads")
 
