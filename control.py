@@ -28,9 +28,13 @@ def durationString(duration):
     Convert a duration in seconds to a string
     for display in HH:MM:SS format
     """
+    days,remainder = divmod(duration, 3600*24)
     hours, remainder = divmod(duration, 3600)
     minutes, seconds = divmod(remainder, 60)
-    return f"{hours:02}:{minutes:02}:{seconds:02}"
+    if days > 0:
+        return f"{days}d{hours:02}:{minutes:02}:{seconds:02}"
+    else:
+        return f"{hours:02}:{minutes:02}:{seconds:02}"
 
 def startTimeString(timestamp):
     # pylint: disable="invalid-name"
