@@ -4,10 +4,6 @@ Description=Garden PI Service
 # then this is not needed as gpio handling is inside the kernel in the RPI
 Requires=systemd-modules-load.service
 After=systemd-modules.load.service
-# time sync being achieved before starting is critical if we run on pi zero that has no RTC
-# The time-sync.target doesn't work on the raspberry pi, so we have to enable the 
-# systemd-time-wait-sync.service and start after it 
-After=systemd-time-wait-sync.service
 # This will force the system to reboot if our application fails to load 
 # So remove these lines if sharing the RPI with other applications
 StartLimitBurst=5

@@ -94,6 +94,54 @@ class DisplayHandler(threading.Thread):
         """
         self.disp.clear()
         self.disp.display()
+    def bootScreen(self):
+        """
+        Function to render the boot screen.
+        This function queries systemd for the status
+        of network and time sync, and returns True
+        only if both are correct. It will display
+        a boot screen showing the status of both
+        """
+        # Create blank image for drawing.
+        # Make sure to create image with mode '1' for 1-bit color.
+        width = self.disp.width
+        height = self.disp.height
+        image = Image.new('1', (width, height))
+        # Get drawing object to draw on image.
+        draw = ImageDraw.Draw(image)
+        # Draw a black filled box to clear the image.
+        draw.rectangle((0,0,width,height), outline=0, fill=0)
+        # First define some constants to allow easy resizing of shapes.
+        padding = -2
+        top = padding
+        #bottom = height-padding
+        # Move left to right keeping track of the current x position for drawing shapes.
+        x = 0
+
+        ready = False
+        res = subprocess.check_output("./stats.sh check-network", shell = True )
+        res = str(res.decode('utf-8')).strip()
+        if res == "active":
+            networkStatus = "Network is up"
+            res = subprocess.check_output("./stats.sh check-time", shell = True )
+            res = str(res.decode('utf-8')).strip()
+            if res == "active":
+                timeSync = "Date/Time is valid"
+                ready = True
+            else:
+                timeSync = "Waiting for time sync..."
+        else:
+            networkStatus = "Waiting for network..."
+            timeSync = ""
+        draw.text((x, top),       str("Started gardenpi"), font=self.font, fill=255)
+        draw.text((x, top+10),    " ", font=self.font, fill=255)
+        draw.text((x, top+20),    networkStatus, font=self.font, fill=255)
+        draw.text((x, top+30),    timeSync, font=self.font, fill=255)
+        # Display image.
+        self.disp.image(image)
+        self.disp.display()
+        return ready
+
     def statusScreen(self):
         """
         Function to render the system status screen.
@@ -335,7 +383,7 @@ class DisplayHandler(threading.Thread):
             self.disp.begin()
             self.clearScreen()
             self.state = STATE_SHOW_STATUS
-            self.endscreen = time.time() + 30
+            self.endscreen = time.time() + 300
 
             gpios.addUpButtonCallback(self.nextState)
             gpios.addDownButtonCallback(self.nextState)

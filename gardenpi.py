@@ -199,22 +199,45 @@ if __name__ == "__main__":
     logging.basicConfig(format="%(message)s", level=logging.INFO,
                         datefmt="%H:%M:%S")
     exitStatus = 0
-    logging.info("Reading configuration")
     try:
+        logging.info("Initializing configuration file")
         db_init()
-        gpios.gpio_init()
 
         wd = systemd_watchdog.watchdog()
         if not wd.is_enabled:
             logging.warning("Systemd watchdog not detected")
         else:
             wd.status("Starting...")
+        # We declare the app ready once the DB file is initialized
+        # that will allow the external apps to configure us, so they
+        # can start
+        wd.ready()
 
+        # We use a function from the display driver to display
+        # the boot screen. The function monitors the system to
+        # detect network and time sync status.
+        logging.info("Starting boot screen")
+        ctrlThread = control.DisplayHandler()
+        retries = 0
+        readyToStart = False
+        while not readyToStart and retries < 300:
+            readyToStart = ctrlThread.bootScreen()
+            time.sleep(1)
+            retries += 1
+            if wd.is_enabled:
+                wd.ping()
 
+        if not readyToStart:
+            logging.warn("Starting without time sync. Operation will be degraded")
+
+        # Wait as much as possible to configure GPIOs, to avoid
+        # any startup problems. Should not be needed since GPIOs
+        # are supposed to be kernel native, but doesn't hurt as
+        # they won't be used until we start the threads
+        logging.info("Configuring GPIO pins")
+        gpios.gpio_init()
 
         logging.info("Launching threads")
-
-        ctrlThread = control.DisplayHandler()
         ctrlThread.daemon = True
         ctrlThread.start()
 
@@ -230,7 +253,7 @@ if __name__ == "__main__":
         dbThread.start()
 
         logging.info("Running")
-        wd.ready()
+       
         wd.status("Running")
         while not queueCmd.globalExit:
             time.sleep(60)
