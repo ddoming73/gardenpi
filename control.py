@@ -383,7 +383,7 @@ class DisplayHandler(threading.Thread):
             self.disp.begin()
             self.clearScreen()
             self.state = STATE_SHOW_STATUS
-            self.endscreen = time.time() + 300
+            self.endscreen = time.time() + 30
 
             gpios.addUpButtonCallback(self.nextState)
             gpios.addDownButtonCallback(self.nextState)
